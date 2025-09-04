@@ -225,6 +225,7 @@ public:
         new_topic_metadata.name = topic_metadata.name;
         new_topic_metadata.type = topic_metadata.type;
         new_topic_metadata.serialization_format = topic_metadata.serialization_format;
+        new_topic_metadata.offered_qos_profiles = topic_metadata.offered_qos_profiles;
         writer.create_topic(new_topic_metadata);
       }
     }
