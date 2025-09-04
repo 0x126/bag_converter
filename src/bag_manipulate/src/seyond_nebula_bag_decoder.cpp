@@ -200,26 +200,27 @@ public:
     }
     
     // Create topics in output bag
-    for (const auto& [input_topic, output_topic] : nebula_topic_mapping) {
-      // Create point cloud topic
-      rosbag2_storage::TopicMetadata pointcloud_topic_meta;
-      pointcloud_topic_meta.name = output_topic;
-      pointcloud_topic_meta.type = "sensor_msgs/msg/PointCloud2";
-      pointcloud_topic_meta.serialization_format = "cdr";
-      writer.create_topic(pointcloud_topic_meta);
-      
-      // Also copy the original nebula packets topic
-      rosbag2_storage::TopicMetadata nebula_topic_meta;
-      nebula_topic_meta.name = input_topic;
-      nebula_topic_meta.type = "nebula_msgs/msg/NebulaPackets";
-      nebula_topic_meta.serialization_format = "cdr";
-      writer.create_topic(nebula_topic_meta);
-    }
-    
-    // Copy all other topics as-is
     for (const auto& topic_info : metadata.topics_with_message_count) {
       const auto& topic_metadata = topic_info.topic_metadata;
-      if (nebula_topic_mapping.find(topic_metadata.name) == nebula_topic_mapping.end()) {
+            
+      // Check if this is a nebula topic to convert
+      auto it = nebula_topic_mapping.find(topic_metadata.name);
+      if (it != nebula_topic_mapping.end()) {
+        // Create converted point cloud topic
+        rosbag2_storage::TopicMetadata pointcloud_topic_meta;
+        pointcloud_topic_meta.name = it->second;
+        pointcloud_topic_meta.type = "sensor_msgs/msg/PointCloud2";
+        pointcloud_topic_meta.serialization_format = "cdr";
+        writer.create_topic(pointcloud_topic_meta);
+        
+        // Also keep the original nebula packets topic with its QoS
+        rosbag2_storage::TopicMetadata nebula_topic_meta;
+        nebula_topic_meta.name = topic_metadata.name;
+        nebula_topic_meta.type = topic_metadata.type;
+        nebula_topic_meta.serialization_format = topic_metadata.serialization_format;
+        nebula_topic_meta.offered_qos_profiles = topic_metadata.offered_qos_profiles;
+        writer.create_topic(nebula_topic_meta);
+      } else {
         // Not a nebula topic, copy as-is
         rosbag2_storage::TopicMetadata new_topic_metadata;
         new_topic_metadata.name = topic_metadata.name;
