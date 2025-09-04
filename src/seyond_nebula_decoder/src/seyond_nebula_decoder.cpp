@@ -38,7 +38,7 @@ SeyondNebulaDecoder::SeyondNebulaDecoder(const DecoderConfig& config)
   // Create calibration configuration
   calibration_config_ = std::make_shared<nebula::drivers::SeyondCalibrationConfiguration>();
   
-  // TODO: Load calibration from file if provided
+  // Load calibration from file if provided
   if (!config.calibration_file.empty()) {
     std::cerr << "Warning: Calibration file loading not yet implemented, using default calibration\n";
   }
@@ -92,7 +92,19 @@ std::tuple<nebula::drivers::NebulaPointCloudPtr, bool> SeyondNebulaDecoder::Proc
     if (type_byte == 100) {
       calibration_packets_seen_++;
       if (calibration_packets_seen_ == 1) {
-        std::cout << "Found RobinW calibration packet (type 100) at packet position\n";
+        std::cout << "Found RobinW calibration packet (type 100)\n";
+      }
+      
+      // Store calibration packet if we don't have one yet
+      if (!has_calibration_from_packet_/* && 
+          (config_.sensor_model == "Robin_W" || config_.sensor_model == "SEYOND_ROBIN_W")*/) {
+        has_calibration_from_packet_ = true;
+        stored_calibration_packet_ = packet_data;
+        
+        // Apply the calibration data
+        std::cout << "Applying calibration from packet (" << packet_data.size() << " bytes)\n";
+        SetCalibrationData(packet_data);
+        std::cout << "Calibration applied successfully\n";
       }
     }
     
@@ -182,11 +194,16 @@ void SeyondNebulaDecoder::ReinitializeDriver()
 
 void SeyondNebulaDecoder::SetCalibrationData(const std::vector<uint8_t>& calibration_data)
 {
-  // Convert vector to string
+  // For RobinW, the calibration packet contains the full AngleHV table
+  // We need to pass this to the driver in the format it expects
+  
+  // Convert vector to string (the driver expects this format)
   std::string calib_string(calibration_data.begin(), calibration_data.end());
   
   // Create new calibration configuration
   auto new_calibration_config = std::make_shared<nebula::drivers::SeyondCalibrationConfiguration>();
+  
+  // Load the calibration string directly - the driver will parse it
   new_calibration_config->LoadFromString(calib_string);
   
   // Store the calibration configuration

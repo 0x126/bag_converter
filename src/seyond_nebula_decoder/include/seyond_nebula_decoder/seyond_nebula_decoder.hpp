@@ -109,6 +109,10 @@ private:
   // Debug logging
   bool first_packet_logged_ = false;
   int calibration_packets_seen_ = 0;
+  
+  // Calibration data storage (for RobinW)
+  bool has_calibration_from_packet_ = false;
+  std::vector<uint8_t> stored_calibration_packet_;
 };
 
 }  // namespace seyond_nebula_decoder
