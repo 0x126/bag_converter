@@ -1,0 +1,107 @@
+cmake_minimum_required(VERSION 3.8)
+project(bag_manipulate)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
+find_package(rosbag2_storage REQUIRED)
+find_package(rosbag2_storage_default_plugins REQUIRED)
+find_package(rcpputils REQUIRED)
+find_package(rcutils REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nebula_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(seyond_decoder REQUIRED)
+find_package(seyond_nebula_decoder REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+
+add_executable(bag_manipulate
+  src/bag_manipulate.cpp
+)
+
+ament_target_dependencies(bag_manipulate
+  rclcpp
+  rosbag2_cpp
+  rosbag2_storage
+  rcpputils
+  rcutils
+  sensor_msgs
+  std_msgs
+)
+
+target_include_directories(bag_manipulate PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+install(TARGETS bag_manipulate
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Build seyond_bag_decoder executable
+add_executable(seyond_bag_decoder
+  src/seyond_bag_decoder.cpp
+)
+
+target_include_directories(seyond_bag_decoder PRIVATE
+  ${seyond_decoder_INCLUDE_DIRS}
+)
+
+target_link_libraries(seyond_bag_decoder
+  seyond_decoder::seyond_decoder_lib
+)
+
+ament_target_dependencies(seyond_bag_decoder
+  rclcpp
+  sensor_msgs
+  rosbag2_cpp
+  rosbag2_storage
+  seyond_decoder
+)
+
+install(TARGETS seyond_bag_decoder
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Build seyond_nebula_bag_decoder executable
+add_executable(seyond_nebula_bag_decoder
+  src/seyond_nebula_bag_decoder.cpp
+)
+
+target_include_directories(seyond_nebula_bag_decoder PRIVATE
+  ${seyond_nebula_decoder_INCLUDE_DIRS}
+)
+
+target_link_libraries(seyond_nebula_bag_decoder
+  seyond_nebula_decoder::seyond_nebula_decoder_lib
+)
+
+ament_target_dependencies(seyond_nebula_bag_decoder
+  rclcpp
+  sensor_msgs
+  nebula_msgs
+  std_msgs
+  builtin_interfaces
+  rosbag2_cpp
+  rosbag2_storage
+  pcl_conversions
+  seyond_nebula_decoder
+)
+
+install(TARGETS seyond_nebula_bag_decoder
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()
