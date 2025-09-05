@@ -213,13 +213,7 @@ public:
         pointcloud_topic_meta.serialization_format = "cdr";
         writer.create_topic(pointcloud_topic_meta);
         
-        // Also keep the original nebula packets topic with its QoS
-        rosbag2_storage::TopicMetadata nebula_topic_meta;
-        nebula_topic_meta.name = topic_metadata.name;
-        nebula_topic_meta.type = topic_metadata.type;
-        nebula_topic_meta.serialization_format = topic_metadata.serialization_format;
-        nebula_topic_meta.offered_qos_profiles = topic_metadata.offered_qos_profiles;
-        writer.create_topic(nebula_topic_meta);
+        // Don't keep the original nebula packets topic (replaced by pointcloud)
       } else {
         // Not a nebula topic, copy as-is
         rosbag2_storage::TopicMetadata new_topic_metadata;
@@ -248,9 +242,6 @@ public:
       // Check if this is a nebula topic to convert
       auto it = nebula_topic_mapping.find(bag_message->topic_name);
       if (it != nebula_topic_mapping.end()) {
-        // Copy original nebula packets message to output
-        writer.write(bag_message);
-        
         // Process nebula packets
         // Deserialize nebula_msgs
         rclcpp::SerializedMessage serialized_msg(*bag_message->serialized_data);
@@ -295,16 +286,15 @@ public:
                                      decoder->GetConfig().frame_id : nebula_msgs.header.frame_id;
           
           // Serialize and write to bag
-          rclcpp::SerializedMessage serialized_pc2;
-          pc2_serializer.serialize_message(&pc2_msg, &serialized_pc2);
+          auto serialized_pc2 = std::make_shared<rclcpp::SerializedMessage>();
+          pc2_serializer.serialize_message(&pc2_msg, serialized_pc2.get());
           
-          auto pc2_bag_msg = std::make_shared<rosbag2_storage::SerializedBagMessage>();
-          pc2_bag_msg->topic_name = it->second;  // Use mapped output topic name
-          pc2_bag_msg->time_stamp = bag_message->time_stamp;
-          pc2_bag_msg->serialized_data = std::make_shared<rcutils_uint8_array_t>(
-            serialized_pc2.release_rcl_serialized_message());
-          
-          writer.write(pc2_bag_msg);
+          // Write to bag file using the same pattern as seyond_bag_decoder.cpp
+          writer.write(
+            serialized_pc2,
+            it->second,  // Use mapped output topic name
+            "sensor_msgs/msg/PointCloud2",
+            rclcpp::Time(bag_message->time_stamp));
           
           clouds_generated++;
           
