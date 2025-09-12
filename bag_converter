@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# Check if Docker is installed
+if ! command -v docker >/dev/null 2>&1; then
+    echo "Error: Docker is not installed. Please install Docker from https://docs.docker.com/engine/install/"
+    exit 1
+fi
+
+# Check if bag_converter:latest image exists
+if ! docker image inspect bag_converter:latest >/dev/null 2>&1; then
+    echo "Error: Docker image 'bag_converter:latest' not found. Please build it first by running: cd bag_converter/docker && ./build.sh"
+    exit 1
+fi
+
+# Check arguments
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 <input_mcap_path> <output_mcap_path>"
+    exit 1
+fi
+
+INPUT_MCAP="$1"
+OUTPUT_MCAP="$2"
+
+# Check if input file exists
+if [ ! -f "$INPUT_MCAP" ]; then
+    echo "Error: Input file '$INPUT_MCAP' does not exist."
+    exit 1
+fi
+
+# Get absolute paths
+INPUT_ABS=$(realpath "$INPUT_MCAP")
+OUTPUT_ABS=$(realpath "$OUTPUT_MCAP")
+
+# Get directory paths for Docker volume mounting
+INPUT_DIR=$(dirname "$INPUT_ABS")
+OUTPUT_DIR=$(dirname "$OUTPUT_ABS")
+INPUT_FILE=$(basename "$INPUT_ABS")
+OUTPUT_FILE=$(basename "$OUTPUT_ABS")
+
+# Run the bag converter using Docker
+echo "Converting bag file: $INPUT_MCAP -> $OUTPUT_MCAP"
+docker run -it --rm \
+    -v "$INPUT_DIR":/input \
+    -v "$OUTPUT_DIR":/output \
+    bag_converter:latest \
+    ros2 run bag_manipulate seyond_nebula_bag_decoder /input/$INPUT_FILE /output/tmp
+mv $OUTPUT_DIR/tmp/tmp_0.mcap $OUTPUT_DIR/$OUTPUT_FILE
+rm -rf $OUTPUT_DIR/tmp

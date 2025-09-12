@@ -13,5 +13,5 @@ cd bag_converter/docker
 
 # Example
 ```shell
-docker run -it --rm -v {YOUR_ROABAG_PATH}:/bag bag_converter:latest ros2 run bag_manipulate seyond_nebula_bag_decoder /bag/xxxx.mcap /bag/yyyy
+./bag_converter <path-to-intput-mcap> <path-to-output-mcap>
 ```
