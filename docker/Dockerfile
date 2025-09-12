@@ -1,7 +1,7 @@
 FROM ubuntu:22.04
 
 # Re-declare ARG after FROM to use in RUN commands
-ENV ROS_DISTRO=humble
+ARG ROS_DISTRO=humble
 SHELL ["/bin/bash", "-c"]
 
 # Set timezone and locale
@@ -82,6 +82,9 @@ RUN rosdep init && \
 # Build ROS packages
 RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
     colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=RelWithDebInfo --packages-up-to bag_manipulate
+
+# Set env var
+ENV ROS_DISTRO=${ROS_DISTRO}
 
 # Copy entrypoint
 ADD docker/entrypoint.sh /
