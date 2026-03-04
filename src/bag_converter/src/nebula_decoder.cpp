@@ -33,7 +33,9 @@ struct PacketMeta
   int16_t lidar_type = -1;
 };
 
-/// Read packet version and lidar_type from the first Seyond data packet in \a packets.
+/// Read packet version and lidar_type from the second Seyond data packet in \a packets.
+/// The first packet is skipped because Robin W NebulaPackets prepend an AngleHV calibration
+/// packet (added in nebula_drs decoder_wrapper.cpp) whose version fields may be zero.
 /// Layout matches nebula_drs: SeyondCommonVersion at 0-5, lidar_type in SeyondCommonHeader at 15.
 PacketMeta extract_packet_meta(const nebula_msgs::msg::NebulaPackets & packets)
 {
@@ -42,12 +44,18 @@ PacketMeta extract_packet_meta(const nebula_msgs::msg::NebulaPackets & packets)
   // SeyondCommonHeader: version(6) + checksum(4) + size(4) + source_id/timestamp_sync_type(1) +
   // lidar_type(1) → lidar_type at offset 15
   static constexpr size_t kLidarTypeOffset = 15;
+  bool skipped_first = false;
   for (const auto & packet : packets.packets) {
     if (packet.data.size() < sizeof(SeyondCommonVersion)) {
       continue;
     }
     const auto * common_version = reinterpret_cast<const SeyondCommonVersion *>(packet.data.data());
     if (common_version->magic_number != kSeyondMagicNumberDataPacket) {
+      continue;
+    }
+    // Skip the first matching packet (may be an AngleHV calibration packet for Robin W)
+    if (!skipped_first) {
+      skipped_first = true;
       continue;
     }
     PacketMeta meta;
